@@ -1,0 +1,13 @@
+udop-unimodel-large-224
+ket5-finetuned
+finetuning
+imageembed
+mlruns
+checkpoint-180000
+*.pickle
+test
+wandb
+noimageembed
+dummy.txt
+*.png
+*.ipynb
