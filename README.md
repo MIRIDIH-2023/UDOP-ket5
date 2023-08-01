@@ -31,32 +31,18 @@ pip install -r requirements.txt
 
 ├── LICENSE
 ├── README.md
-├── config/                          # Train/Inference configuration files
+├── config/                         # Train/Inference configuration files
 │   ├── inference.yaml
-│   └── train.yaml
-├── core/                            # Main source code
+│   └── config.yaml
+├── core/                           # Main source code
 │   ├── common/
 │   ├── datasets/
 │   ├── models/
 │   └── trainers/
-├── data/                            # Custom dataset folder
-│   ├── images/
-│   │   └── image_{idx}.png
-│   ├── json_data/
-│   │   └── processed_{idx}.pickle
-│   └── SBERT/
-│       └── json_data2/
-├── main.py                     
-├── models                          # Trained models saved to this folder
-├── test                            # Save visualizations during inference
+├── main.py                         # Source code for inference 
 ├── requirements.txt
-├── udop-unimodel-large-224         # Pretrained UDOP model
-│   ├── config.json
-│   ├── pytorch_model.bin
-│   ├── special_tokens_map.json
-│   ├── spiece.model
-│   └── tokenizer_config.json
-└── utils                           # Utilities
+├── run.py
+└── savevector.py                   # vector embedding source code for recommendataion system
 ```
 
 ## Scripts
@@ -64,7 +50,7 @@ Setup folder structures as above and modify config/ yaml files for customization
 
 ### Finetune UDOP model
 ```
-python main.py config/train.yaml
+python main.py config/config.yaml
 ```
 
 ### Inference UDOP model
