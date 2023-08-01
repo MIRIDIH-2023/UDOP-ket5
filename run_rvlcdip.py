@@ -31,7 +31,7 @@ from transformers import T5Tokenizer, AutoTokenizer
 from transformers.configuration_utils import PretrainedConfig
 import sentencepiece
 from core.datasets import RvlCdipDataset, get_rvlcdip_labels
-from core.trainers import DataCollator
+from core.trainers import DataCollator, MIRIDIH_Trainer
 from core.models import UdopDualForConditionalGeneration, UdopUnimodelForConditionalGeneration, UdopConfig, UdopTokenizer
 
 
@@ -259,8 +259,6 @@ def main():
     )
     
     ########################### when using custom tokenizer ################################
-
-    #tokenizer = AutoTokenizer.from_pretrained("tokenizer_finetuned_ket5_by_xml_data")
     '''
     tokenizer = UdopTokenizer.from_pretrained(
         model_args.tokenizer_name if model_args.tokenizer_name else model_args.model_name_or_path,
@@ -270,28 +268,11 @@ def main():
         use_auth_token=True if model_args.use_auth_token else None,
     )
     '''
-    tokenizer = AutoTokenizer.from_pretrained('ket5-finetuned')
+    tokenizer = AutoTokenizer.from_pretrained('wordunitfinetuning/checkpoint-280000')
     #######################################################################################
     
-    model = model_type.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        ignore_mismatched_sizes=True,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
+    model = model_type.from_pretrained('wordunitfinetuning/checkpoint-280000')
 
-    '''
-    with open('./modelconfig.json', 'r') as jsonfile:
-        cf = json.load(jsonfile)
-    ptcf = PretrainedConfig(**cf)
-    print(ptcf)
-    model = UdopUnimodelForConditionalGeneration(ptcf)
-
-    print(torch.cuda.get_device_name(0))
-    '''
     ################################################### revised start ############################################
     json_path = '../data/json_data'
     image_path = '../data/image'
@@ -335,7 +316,7 @@ def main():
         return metric.compute(predictions=predictions, references=labels)
 
     # Initialize our Trainer
-    trainer = Trainer(
+    trainer = MIRIDIH_Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset if training_args.do_train else None,
@@ -378,7 +359,7 @@ def main():
         logger.info("*** Predict ***")
 
         predictions, labels, metrics = trainer.predict(eval_dataset)
-        predictions = np.argmax(predictions, axis=1)
+        predictions = np.argmax(predictions, axis=0)
         
         trainer.log_metrics("test", metrics)
         trainer.save_metrics("test", metrics)

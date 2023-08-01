@@ -271,12 +271,13 @@ def main():
         indexmap = pickle.load(f)
         f.close()
 
+    # Get embedded vectors
     vectormap = None
     with open('./encoded_vectors_noimage.pickle','rb') as f:
         vectormap = pickle.load(f)
         f.close()
 
-    # Predict
+    # Recommendation
     if training_args.do_predict:
         logger.info("*** Recommendation ***")
         glb = 0
@@ -284,29 +285,30 @@ def main():
             
             query = input(f"Enter query : ")
 
+            # preprocess query
             real_query = 'Layout Modeling. ' + query
             tokenized = tokenizer.encode(real_query)
             input_ids = torch.unsqueeze(torch.tensor(tokenized), dim=0).to(device)
             seg_data = torch.unsqueeze(torch.tensor([[0.0,0.0,0.0,0.0]]*len(tokenized)), dim=0).to(device)
-            '''
             im = Image.open('./void.png')
             im = torch.unsqueeze(img_trans_torchvision(im, 224),dim=0).to(device)
             visual_bbox_input = torch.unsqueeze(get_visual_bbox(224),dim=0).to(device)
-            '''
 
             output = model.forward(
                     input_ids,
                     seg_data=seg_data,
-                    #image=im,
-                    #visual_seg_data = visual_bbox_input,
+                    image=im,
+                    visual_seg_data = visual_bbox_input,
                     use_cache=True,
                     decoder_start_token_id=tokenizer.pad_token_id,
                     num_beams=1,
                     max_length=512,
                 )
 
+            # get embedded query
             encoded_vector = output['last_hidden_state'][0][0].detach().cpu().numpy()
 
+            # calculate all cos similarity
             simlst = []
             for i in range(len(indexmap)):
                 simlst.append(cos_sim(encoded_vector, vectormap[i]))
@@ -317,6 +319,7 @@ def main():
             sortedlst = sortedlst[0:5]
             print(sortedlst, simlst[sortedlst])
 
+            # draw top-5 thumbnails
             fig, axs = plt.subplots(1, 5, figsize = (20,4))
             fig.suptitle(f'Query\n{query}', fontsize = 13, fontweight='bold')
             
@@ -329,6 +332,7 @@ def main():
             
             plt.show()
             
+            # save image
             fig.savefig(f'./Recom_{glb}.png')
             glb += 1
 

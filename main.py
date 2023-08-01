@@ -242,9 +242,9 @@ def main():
     # The .from_pretrained methods guarantee that only one local process can concurrently
     # download model & vocab.
 
-    config = UdopConfig.from_pretrained("finetuning/checkpoint-180000")
-    tokenizer = AutoTokenizer.from_pretrained("finetuning/checkpoint-180000")
-    model = UdopUnimodelForConditionalGeneration.from_pretrained("finetuning/checkpoint-180000").to(device)
+    config = UdopConfig.from_pretrained("wordunitfinetuning/checkpoint-280000")
+    tokenizer = AutoTokenizer.from_pretrained("wordunitfinetuning/checkpoint-280000")
+    model = UdopUnimodelForConditionalGeneration.from_pretrained("wordunitfinetuning/checkpoint-280000").to(device)
 
 
    # Get datasets
@@ -281,7 +281,7 @@ def main():
             input_ids = torch.unsqueeze(sample['input_ids'], dim=0).to(device)
             labels = sample['labels'].to(device)
             seg_data = torch.unsqueeze(sample['seg_data'], dim=0).to(device)
-            im = torch.unsqueeze(sample['image'], dim=0).to(device)
+            im = torch.unsqueeze(torch.zeros_like(sample['image']), dim=0).to(device)
             visual_seg_data = torch.unsqueeze(sample['visual_seg_data'], dim=0).to(device)
             
 

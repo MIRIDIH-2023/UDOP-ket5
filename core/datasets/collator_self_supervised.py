@@ -104,10 +104,10 @@ class DataCollatorForT5LayoutModeling:
         labels = []
         for i in range(len(label_numbering)):
             labels += self.tokenizer.encode(f'<extra_l_id_{label_numbering[i]}>', add_special_tokens=True)[:-1]
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][0]/page_size[0])}>')[:-1]
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][1]/page_size[1])}>')[:-1]
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][2]/page_size[0])}>')[:-1]
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][3]/page_size[1])}>')[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][0]/page_size[0])}>', add_special_tokens=True)[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][1]/page_size[1])}>', add_special_tokens=True)[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][2]/page_size[0])}>', add_special_tokens=True)[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][3]/page_size[1])}>', add_special_tokens=True)[:-1]
             
         slice_pointer=0
         L = len(group_list)
@@ -232,12 +232,12 @@ class DataCollatorForT5JointReconstruction:
         # TODO: 라벨링 하기 (Visual_Text_Recognition_Test.py 참고하면서)
         labels = []
         for i in range(len(label_numbering)):
-            labels += self.tokenizer.encode(f'<extra_id_{label_numbering[i]}>', add_special_tokens=False)
+            labels += self.tokenizer.encode(f'<extra_id_{label_numbering[i]}>', add_special_tokens=True)[:-1]
             labels += input_ids[group_list[i][0]:group_list[i][1]]
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][0]/page_size[0])}>', add_special_tokens=False)
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][1]/page_size[1])}>', add_special_tokens=False)
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][2]/page_size[0])}>', add_special_tokens=False)
-            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][3]/page_size[1])}>', add_special_tokens=False)
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][0]/page_size[0])}>', add_special_tokens=True)[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][1]/page_size[1])}>', add_special_tokens=True)[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][2]/page_size[0])}>', add_special_tokens=True)[:-1]
+            labels += self.tokenizer.encode(f'<loc_{int(500*group_bbox_list[i][3]/page_size[1])}>', add_special_tokens=True)[:-1]
 
         slice_pointer=0
         L = len(group_list)

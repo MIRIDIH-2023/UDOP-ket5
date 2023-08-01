@@ -454,7 +454,7 @@ def visualize_layout_task(sample, label_text, prediction_text, input_text, do_sa
 
     label_text = '\n'.join([f"{token['id']}: {token['text']}" for token in input_tokens])
 
-    axs[1][1].text(0.5, 1, label_text, fontsize=12, verticalalignment='top', horizontalalignment='center')
+    #axs[1][1].text(0.5, 1, label_text, fontsize=12, verticalalignment='top', horizontalalignment='center')
     axs[1][1].axis('off')
     axs[1][0].axis('off')
     axs[1][2].axis('off')

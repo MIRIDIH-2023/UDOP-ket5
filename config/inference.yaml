@@ -3,7 +3,7 @@
 
     # Path config
     model_name_or_path: "models/all",   # Path to model weight
-    output_dir: "./test",               # Path to save test images
+    output_dir: "./blindtest2",               # Path to save test images
     data_dir: "./data",                 # Path to data directory
 
     # Model config

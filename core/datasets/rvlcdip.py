@@ -12,7 +12,6 @@ from torch.utils.data import Dataset
 import numpy as np
 
 from core.common.utils import img_trans_torchvision, get_visual_bbox
-from core.datasets.collate_supervised import DataCollatorForT5DocCLS
 from core.datasets.collator_self_supervised import DataCollatorForSelfSupervisedTasks
 
 import pandas as pd
@@ -155,6 +154,29 @@ def mask_process(bbox_list, mask_ratio=0.75):
     mask = random_masking(L=l, mask_ratio=mask_ratio)
     return group_tokens(mask[0]), group_bbox(bbox_list, group_tokens(mask[0]))
 
+def convert_word_unit(group_list, word_list):
+
+    ret_group_list = []
+
+    idx, i = 0, 0
+    group_pointer = 0
+    while i < len(word_list):
+        if group_pointer < len(group_list) and i == group_list[group_pointer][0]:
+            start, end = group_list[group_pointer][0], group_list[group_pointer][1]
+            l = 0
+            for w in range(start, end):
+                l += len(word_list[w])
+            ret_group_list.append([idx, idx+l])
+            idx += l
+            i = group_list[group_pointer][1]
+            group_pointer += 1
+        else:
+            idx += len(word_list[i])
+            i += 1
+
+    return ret_group_list
+
+
 class RvlCdipDataset(Dataset):
 
     #NUM_LABELS = 16
@@ -232,6 +254,11 @@ class RvlCdipDataset(Dataset):
         
         self.user_prompt = user_prompt
 
+        self.lm_ratio = 0.4
+        self.vt_ratio = 0.5
+        self.jt_ratio = 0.15
+        self.unit = 'word'
+
         results = [self.load_file(file_idx) for file_idx in tqdm(range(file_data_range[0],file_data_range[1]))]
         for labels, examples, images in results:
             self.labels += labels
@@ -240,6 +267,17 @@ class RvlCdipDataset(Dataset):
         
         assert len(self.labels) == len(self.examples)
 
+    def set_lm_ratio(self, ratio):
+        print(f"before ratio = {self.lm_ratio}")
+        self.lm_ratio = ratio
+        print(f"after ratio = {self.lm_ratio}")
+    
+    def set_vt_ratio(self, ratio):
+        self.vt_ratio = ratio
+
+    def set_jt_ratio(self, ratio):
+        self.jt_ratio = ratio
+    
     def load_file(self, file_idx):
 
         labels = []
@@ -259,13 +297,13 @@ class RvlCdipDataset(Dataset):
         #try:
             upt=''
             if self.user_prompt is None:
-                r = random.randint(0,2)
+                r = random.randint(0,0)
                 if r == 0:
                     upt = 'Layout Modeling.'
                 elif r == 1:
                     upt = 'Visual Text Recognition.'
                 else:
-                    upt = 'Joint Text-Layout Reconstruction'
+                    upt = 'Joint Text-Layout Reconstruction.'
             else:
                 upt = self.user_prompt
 
@@ -293,9 +331,11 @@ class RvlCdipDataset(Dataset):
 
                 #input_ids, labels, bbox_input = self.cls_collator("user prompt", text_list, bbox, label) #prompt 붙여서 최종 input,bbox,label을 만듦. ################################
                 input_ids, labels, bbox_input = text_list, labels, bbox
-
                 attention_mask = [1] * len(input_ids)
                 decoder_attention_mask = [1] * len(labels)
+
+                #print(self.tokenizer.convert_ids_to_tokens(input_ids))
+                #print(self.tokenizer.convert_ids_to_tokens(labels))
 
                 bbox_input = torch.tensor(bbox_input, dtype=torch.float)
                 labels = torch.tensor(labels, dtype=torch.long)
@@ -347,11 +387,11 @@ class RvlCdipDataset(Dataset):
         #max_seq_length와 num_img_embeds 는 원본 코드에서도 안쓰는데 왜있는거지?
         # Labeling할 토큰들을 정한다
         if 'Layout Modeling' in user_prompt:
-            mask_ratio = 0.0
+            mask_ratio = self.lm_ratio
         elif 'Visual Text Recognition' in user_prompt:
-            mask_ratio = 0.5
+            mask_ratio = self.vt_ratio
         elif 'Joint Text-Layout Reconstruction' in user_prompt:
-            mask_ratio = 0.15
+            mask_ratio = self.jt_ratio
         else :
             raise ValueError('Invalid Prompt')
         #file_ 와 image_dir 모두 1 2 3 ... index 임.
@@ -370,30 +410,42 @@ class RvlCdipDataset(Dataset):
         tmp_images.close()
 
         image = img_trans_torchvision(tiff_images, image_size)
-        if 'Layout Modeling' in user_prompt:
-            image = torch.tensor(np.zeros_like(image))
 
         sub_text_list, sub_bbox_list, labels_list = [], [], []
         ret_text_list, ret_bbox_list = [], []
+        sub_word_list, sub_word_bbox_list = [], []
         for form in data['form']: #문장별로 쪼갬
-          text_list, bbox_list = [], []
+          text_list, bbox_list, word_list, word_bbox_list = [], [], [], []
           for word in form['words']: #단어별로 쪼갬
 
             if word == ' ': #띄어쓰기는 건너뛰기
               continue
 
             sub_tokens = tokenizer.tokenize(word['text']) #단어별로 쪼갠걸 다시 토큰화 (하나의 단어도 여러개의 토큰 가능)
+            if self.unit == 'word': # 단어 단위 마스킹 (word 하나당 bbox 하나, tokenize는 미리 해둠)
+              word_list.append(sub_tokens)
+              word_bbox_list.append(word['box'])
             for sub_token in sub_tokens:
               text_list.append(sub_token)
               bbox_list.append(word['box']) #현재는 단어별 bbox, 추후 문장별 bbox로도 수정 가능
               #bbox_list.append(form['box'])
           sub_text_list.append(text_list)
+          if self.unit == 'word':
+            sub_word_list.append(word_list)
+            sub_word_bbox_list.append(word_bbox_list)
+
           sub_bbox_list.append(bbox_list)
         assert len(sub_text_list) == len(sub_bbox_list)
         a = 0
+        
         for i in range(len(sub_text_list)):
+            
+            if self.unit == 'word':
+                sub_group_list, group_bbox_list = mask_process(sub_word_bbox_list[i], mask_ratio=mask_ratio)
+                group_list = convert_word_unit(sub_group_list, sub_word_list[i])
 
-            group_list, group_bbox_list = mask_process(sub_bbox_list[i], mask_ratio=mask_ratio)
+            else:
+                group_list, group_bbox_list = mask_process(sub_bbox_list[i], mask_ratio=mask_ratio)
 
             b = a + len(group_list)
             numbering_list = [i%100 for i in range(a,b)]
@@ -537,13 +589,13 @@ class RvlCdipDatasetForVisualization(Dataset):
         #try:
             upt=''
             if self.user_prompt is None:
-                r = random.randint(2,2)
+                r = random.randint(0,0)
                 if r == 0:
                     upt = 'Layout Modeling.'
                 elif r == 1:
                     upt = 'Visual Text Recognition.'
                 else:
-                    upt = 'Joint Text-Layout Reconstruction'
+                    upt = 'Joint Text-Layout Reconstruction.'
             else:
                 upt = self.user_prompt
 
@@ -625,7 +677,7 @@ class RvlCdipDatasetForVisualization(Dataset):
         #max_seq_length와 num_img_embeds 는 원본 코드에서도 안쓰는데 왜있는거지?
         # Labeling할 토큰들을 정한다
         if 'Layout Modeling' in user_prompt:
-            mask_ratio = 0.75
+            mask_ratio = 1.0
         elif 'Visual Text Recognition' in user_prompt:
             mask_ratio = 0.5
         elif 'Joint Text-Layout Reconstruction' in user_prompt:
